@@ -1,3 +1,15 @@
 spring:
   application:
-    name: Config Server
+    name: config-server
+
+  profiles:
+    active: native
+
+  cloud:
+    config:
+      server:
+        native:
+          search-locations: classpath:/config
+
+server:
+  port: 3001
