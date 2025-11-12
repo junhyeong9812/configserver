@@ -249,7 +249,276 @@ spring:
 
 ---
 
-## 정리
+## Eureka 연동 (Config Server 서비스 등록)
+
+Config Server가 Eureka Server(예: 포트 5000)에 자신을 서비스로 등록하면, 클라이언트들은 Config Server의 실제 주소를 직접 알 필요가 없고 **서비스 이름으로 설정을 가져올 수 있습니다.**
+
+### 1) Eureka Server 주소
+
+```
+http://localhost:5000/eureka/
+```
+
+### 2) Config Server에 Eureka Client 설정 추가
+
+**build.gradle** (Config Server)
+
+```
+implementation 'org.springframework.cloud:spring-cloud-starter-netflix-eureka-client'
+```
+
+**application.yml** (Config Server)
+
+```
+spring:
+  application:
+    name: config-server
+  cloud:
+    config:
+      server:
+        native:
+          search-locations: classpath:/config
+
+server:
+  port: 3001
+
+eureka:
+  client:
+    service-url:
+      defaultZone: http://localhost:5000/eureka/
+    register-with-eureka: true
+    fetch-registry: true
+```
+
+Config Server는 Eureka에 **`config-server`** 라는 서비스명으로 등록됩니다.
+
+---
+
+### 3) 클라이언트 서비스에서 Config Server 가져오기 (Eureka 기반)
+
+클라이언트 서비스는 `URL` 대신 **서비스 이름으로 Config Server를 찾습니다.**
+
+**build.gradle** (Client 서비스)
+
+```
+implementation 'org.springframework.cloud:spring-cloud-starter-netflix-eureka-client'
+implementation 'org.springframework.cloud:spring-cloud-starter-config'
+```
+
+**application.yml** (Client 서비스)
+
+```yaml
+spring:
+  application:
+    name: orders
+  profiles:
+    active: dev
+  config:
+    import: "optional:configserver:http://config-server"   # URL 대신 서비스명 사용
+
+# Eureka 등록
+
+Eureka:
+  client:
+    service-url:
+      defaultZone: http://localhost:5000/eureka/
+```
+
+> 여기서 `http://config-server` 는 Config Server가 Eureka에 등록된 서비스 이름입니다.
+> Eureka가 내부적으로 IP/Port 를 확인해 연결합니다.
+
+---
+
+### 4) 아키텍처 흐름
+
+```
+    [Config Server] ── registers ──> [Eureka Server]
+           ▲                                 │
+           │                                 │ resolves service name
+           │                                 ▼
+    [Client Service] ── requests config ──> config-server
+```
+
+---
+
+## 파일 시스템 기반 저장소(native) 상세 설명
+
+### 설정 예시
+
+```
+spring:
+  profiles:
+    active: native
+  cloud:
+    config:
+      server:
+        native:
+          search-locations: file:///{FILE_PATH}
+```
+
+* **native 프로필**: Config Server가 **파일 시스템 또는 classpath** 에서 설정 파일을 읽도록 지시하는 프로필
+* **{FILE_PATH}**: 설정 파일이 저장된 실제 시스템 경로
+* **search-locations**: 여러 경로를 쉼표로 구분하여 입력 가능, `classpath:` 사용 시 리소스 폴더에서 탐색
+
+예시 (classpath 기반):
+
+```
+spring:
+  cloud:
+    config:
+      server:
+        native:
+          search-locations: classpath:/config
+```
+
+> classpath:/config → `src/main/resources/config` 디렉토리를 자동으로 인식
+
+---
+
+## 설정 파일명 규칙 및 우선순위
+
+### 기본 파일명 규칙
+
+* `{application-name}-{profile}.yml` 또는 `.properties`
+* `{application-name}` = 클라이언트의 `spring.application.name`
+* `{profile}` = 클라이언트가 설정한 `spring.profiles.active`
+
+### 적용 우선순위 (위 → 아래 순으로 강함)
+
+1. **애플리케이션 + 프로필 설정**
+
+    * `{app-name}-{profile}.yml`
+    * `{app-name}/application-{profile}.yml`
+    * `{app-name}/{profile}.yml`
+2. **애플리케이션 공통 설정**
+
+    * `{app-name}.yml`
+    * `{app-name}/application.yml`
+3. **전체 공통 프로필 설정**
+
+    * `application-{profile}.yml`
+4. **전체 공통 기본 설정**
+
+    * `application.yml`
+
+---
+
+## Git 기반 설정 저장소 사용
+
+```
+spring:
+  profiles:
+    active: native, git
+
+  cloud:
+    config:
+      server:
+        native:
+          search-locations: classpath:/configs
+
+        git:
+          uri: https://github.com/yonggyo1125/project-configs
+          default-label: main
+          search-paths: configs/**
+          basedir: configs
+          clone-on-start: true
+```
+
+| 설정                            | 설명                                 |
+| ----------------------------- | ---------------------------------- |
+| profiles.active = native, git | Native + Git 저장소 둘 다 사용 가능하게 구성    |
+| git.uri                       | 원격 Git 저장소 주소                      |
+| git.default-label             | 기본 branch (main)                   |
+| git.search-paths              | Git repo 내부에서 설정 파일 검색할 디렉토리 경로 패턴 |
+| git.basedir                   | Git repo를 로컬로 clone 하는 위치 이름       |
+| git.clone-on-start            | 서버 시작 시 Git repo를 자동으로 clone       |
+
+---
+
+## Eureka 서버와 연동하여 Config Server 등록
+
+### 의존성
+
+```
+implementation 'org.springframework.cloud:spring-cloud-starter-netflix-eureka-client'
+```
+
+### Config Server `application.yml`
+
+```
+eureka:
+  client:
+    register-with-eureka: true
+    fetch-registry: true
+    serviceUrl:
+      defaultZone: http://localhost:5000/eureka/
+```
+
+* `register-with-eureka`: Config Server가 Eureka에 등록됨
+* `fetch-registry`: Eureka에 등록된 다른 서비스 정보를 가져옴
+
+---
+
+## Prometheus + Grafana 모니터링
+
+### 의존성
+
+```
+runtimeOnly 'io.micrometer:micrometer-registry-prometheus'
+```
+
+### application.yml
+
+```
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info,prometheus
+  endpoint:
+    prometheus:
+      enabled: true
+```
+
+* Prometheus는 `/actuator/prometheus` 로 메트릭을 수집
+
+---
+
+## Loki + Grafana 로그 수집
+
+### build.gradle
+
+```
+implementation 'com.github.loki4j:loki-logback-appender:2.0.0'
+```
+
+### logback.xml
+
+```
+<configuration>
+    <appender name="LOKI" class="com.github.loki4j.logback.Loki4jAppender">
+        <http>
+            <url>https://{LOKI_SERVER}/loki/api/v1/push</url>
+        </http>
+        <message class="com.github.loki4j.logback.JsonLayout" />
+    </appender>
+
+    <appender name="STDOUT" class="ch.qos.logback.core.ConsoleAppender">
+        <encoder>
+            <pattern>%d{yyyy-MM-dd HH:mm:ss.SSS} [%thread] %-5level %logger{36} - %msg%n</pattern>
+        </encoder>
+    </appender>
+
+    <root level="INFO">
+        <appender-ref ref="LOKI"/>
+        <appender-ref ref="STDOUT"/>
+    </root>
+</configuration>
+```
+
+---
+
+#
 
 * **저장 위치**: `src/main/resources/config` (native)
 * **파일 이름**: `{application}.yml`, `{application}-{profile}.yml`

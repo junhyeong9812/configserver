@@ -3,13 +3,28 @@ spring:
     name: config-server
 
   profiles:
-    active: native
+    active: native, git
 
   cloud:
     config:
       server:
         native:
-          search-locations: classpath:/config
+          search-locations: file:///D:/pintech/sparta/2th_infra/msa_infra/project-configs
+        git:
+          uri: https://github.com/junhyeong9812/project-configs
+          default-label: main
+          search-paths:
+            - configs
+            - configs/**
+          basedir: configs
+          clone-on-start: true
+
+eureka:
+  client:
+    register-with-eureka: true
+    fetch-registry: true
+    service-url:
+      defaultZone: http://localhost:3150/eureka/
 
 server:
-  port: 3001
+  port: 3100
