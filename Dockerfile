@@ -2,10 +2,10 @@ FROM eclipse-temurin:21-jdk
 ARG JAR_FILE=build/libs/*.jar
 COPY ${JAR_FILE} app.jar
 
-ENV HOSTNAME=localhost
-ENV EUREKA_URL=http://localhost:3150/eureka/
+#ENV HOSTNAME=localhost
+#ENV EUREKA_URL=http://localhost:3150/eureka/
 
-ENTRYPOINT ["java", "-DEUREKA_INSTANCE_HOSTNAME=${HOSTNAME}", "-DEUREKA_CLIENT_SERVICE-URL_DEFAULTZONE=${EUREKA_URL}", "-jar", "app.jar"]
-
+#ENTRYPOINT ["java", "-DEUREKA_INSTANCE_HOSTNAME=${HOSTNAME}", "-DEUREKA_CLIENT_SERVICE-URL_DEFAULTZONE=${EUREKA_URL}", "-jar", "app.jar"]
+ENTRYPOINT ["java", "-jar", "app.jar"]
 
 EXPOSE 3100
