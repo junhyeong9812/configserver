@@ -3,7 +3,7 @@ spring:
     name: config-server
 
   profiles:
-    active: native, git
+    active: git
 
   cloud:
     config:
@@ -14,8 +14,9 @@ spring:
           uri: https://github.com/junhyeong9812/project-configs
           default-label: main
           search-paths:
-            - configs
-            - configs/**
+            - configs/common
+            - configs/{application}/{profile}
+            - configs/{application}
           basedir: configs
           clone-on-start: true
 
