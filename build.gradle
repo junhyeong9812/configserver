@@ -30,6 +30,7 @@ dependencies {
 	implementation 'org.springframework.cloud:spring-cloud-config-server'
     implementation 'io.micrometer:micrometer-tracing-bridge-brave'
     implementation 'io.zipkin.reporter2:zipkin-reporter-brave'
+    implementation 'com.github.loki4j:loki-logback-appender:2.0.0'
 	runtimeOnly 'io.micrometer:micrometer-registry-prometheus'
 	providedRuntime 'org.springframework.boot:spring-boot-starter-tomcat'
 	testImplementation 'org.springframework.boot:spring-boot-starter-test'
